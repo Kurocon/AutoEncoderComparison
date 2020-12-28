@@ -1,8 +1,11 @@
-import math
+import math, logging
 from typing import Union, Optional
 
+import torch
+from torch.utils.data import Dataset
 
-class BaseDataset:
+
+class BaseDataset(Dataset):
 
     # Train amount is either a proportion of data that should be used as training data (between 0 and 1),
     # or an integer indicating how many entries should be used as training data (e.g. 1000, 2000)
@@ -16,10 +19,14 @@ class BaseDataset:
     _data = None
     _trainset: 'BaseDataset' = None
     _testset: 'BaseDataset' = None
+    transform = None
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, path: Optional[str] = None):
+        self.log = logging.getLogger(self.__class__.__name__)
         if name is not None:
             self.name = name
+        if path is not None:
+            self._source_path = path
 
     def __str__(self):
         if self._data is not None:
@@ -27,19 +34,30 @@ class BaseDataset:
         else:
             return f"{self.name} (no data loaded)"
 
+    # __len__ so that len(dataset) returns the size of the dataset.
+    # __getitem__ to support the indexing such that dataset[i] can be used to get ith sample
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, item):
+        return self.transform(self._data[item]) if self.transform else self._data[item]
+
     @classmethod
     def get_new(cls, name: str, data: Optional[list] = None, source_path: Optional[str] = None,
                 train_set: Optional['BaseDataset'] = None, test_set: Optional['BaseDataset'] = None):
         dset = cls()
+        dset.name = name
         dset._data = data
         dset._source_path = source_path
         dset._trainset = train_set
         dset._testset = test_set
         return dset
 
-    def load(self, name: str, path: str):
-        self.name = str
-        self._source_path = path
+    def load(self, name: Optional[str] = None, path: Optional[str] = None):
+        if name is not None:
+            self.name = name
+        if path is not None:
+            self._source_path = path
         raise NotImplementedError()
 
     def _subdivide(self, amount: Union[int, float]):
@@ -69,3 +87,13 @@ class BaseDataset:
         if not self._trainset or not self._testset:
             self._subdivide(self.TRAIN_AMOUNT)
         return self._testset
+
+    def get_loader(self, dataset, batch_size: int = 128, num_workers: int = 4) -> torch.utils.data.DataLoader:
+        return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False,
+                                           num_workers=num_workers, pin_memory=True)
+
+    def get_train_loader(self, batch_size: int = 128, num_workers: int = 4) -> torch.utils.data.DataLoader:
+        return self.get_loader(self.get_train(), batch_size=batch_size, num_workers=num_workers)
+
+    def get_test_loader(self, batch_size: int = 128, num_workers: int = 4) -> torch.utils.data.DataLoader:
+        return self.get_loader(self.get_test(), batch_size=batch_size, num_workers=num_workers)

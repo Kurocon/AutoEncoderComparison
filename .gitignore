@@ -220,4 +220,7 @@ fabric.properties
 /datasets/*
 !/datasets/.gitkeep
 
+/test_temp
+/train_temp
+
 /config.py

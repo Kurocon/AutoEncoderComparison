@@ -1,21 +1,16 @@
 import importlib
 
 import config
-import logging
+import logging.config
+
+# Get logging as early as possible!
+logging.config.fileConfig("logging.conf")
+
 
 from models.base_corruption import BaseCorruption
 from models.base_dataset import BaseDataset
 from models.base_encoder import BaseEncoder
 from models.test_run import TestRun
-
-logger = logging.getLogger("main.py")
-logger.setLevel(logging.DEBUG)
-
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 
 def load_dotted_path(path):
@@ -26,6 +21,7 @@ def load_dotted_path(path):
 
 
 def run_tests():
+    logger = logging.getLogger("main.run_tests")
     for test in config.TEST_RUNS:
         logger.info(f"Running test run '{test['name']}'...")
 
@@ -50,7 +46,7 @@ def run_tests():
                            corruption=corruption_model(**test['corruption_kwargs']))
 
         # Run TestRun
-        test_run.run()
+        test_run.run(retrain=False)
 
 
 if __name__ == '__main__':
