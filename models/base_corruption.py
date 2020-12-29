@@ -15,7 +15,11 @@ class BaseCorruption:
         return f"{self.name}"
 
     @classmethod
-    def corrupt(cls, dataset: BaseDataset) -> BaseDataset:
+    def corrupt_image(cls, image):
+        raise NotImplementedError()
+
+    @classmethod
+    def corrupt_dataset(cls, dataset: BaseDataset) -> BaseDataset:
         raise NotImplementedError()
 
 
@@ -26,5 +30,9 @@ class NoCorruption(BaseCorruption):
     name = "No corruption"
 
     @classmethod
-    def corrupt(cls, dataset: BaseDataset) -> BaseDataset:
+    def corrupt_image(cls, image):
+        return image
+
+    @classmethod
+    def corrupt_dataset(cls, dataset: BaseDataset) -> BaseDataset:
         return dataset

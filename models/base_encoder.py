@@ -6,6 +6,7 @@ import torch
 
 from typing import Optional
 
+from torch.nn.modules.loss import _Loss
 from torchvision.utils import save_image
 
 from config import TRAIN_TEMP_DATA_BASE_PATH, TEST_TEMP_DATA_BASE_PATH, MODEL_STORAGE_BASE_PATH
@@ -37,7 +38,8 @@ class BaseEncoder(torch.nn.Module):
             torch.nn.ReLU(),
             torch.nn.Linear(in_features=input_shape // 4, out_features=input_shape // 2),
             torch.nn.ReLU(),
-            torch.nn.Linear(in_features=input_shape // 2, out_features=input_shape)
+            torch.nn.Linear(in_features=input_shape // 2, out_features=input_shape),
+            torch.nn.ReLU()
         )
 
         # Use GPU acceleration if available
@@ -50,7 +52,10 @@ class BaseEncoder(torch.nn.Module):
         self.loss_function = torch.nn.MSELoss()
 
     def after_init(self):
-        self.log.info(f"Auto-encoder {self.__class__.__name__} initialized with {len(list(self.network.children()))} layers on {self.device.type}. Optimizer: {self.optimizer}, Loss function: {self.loss_function}")
+        self.log.info(f"Auto-encoder {self.__class__.__name__} initialized with "
+                      f"{len(list(self.network.children())) if self.network else 'custom'} layers on "
+                      f"{self.device.type}. Optimizer: {self.optimizer.__class__.__name__}, "
+                      f"Loss function: {self.loss_function.__class__.__name__}")
 
     def forward(self, features):
         return self.network(features)
@@ -109,21 +114,33 @@ class BaseEncoder(torch.nn.Module):
 
         outputs = None
         for epoch in range(epochs):
-            self.log.debug(f"Start training epoch {epoch}...")
+            self.log.debug(f"Start training epoch {epoch + 1}...")
             loss = 0
-            for batch_features in train_loader:
-                # load batch features to the active device
-                batch_features = batch_features.to(self.device)
+            for i, batch_features in enumerate(train_loader):
+                # # load batch features to the active device
+                # batch_features = batch_features.to(self.device)
 
                 # reset the gradients back to zero
                 # PyTorch accumulates gradients on subsequent backward passes
                 self.optimizer.zero_grad()
 
+                # Modify features used in training model (if necessary) and load to the active device
+                train_features = self.process_train_features(batch_features).to(self.device)
+
                 # compute reconstructions
-                outputs = self(batch_features)
+                outputs = self(train_features)
+
+                # Modify outputs used in loss function (if necessary) and load to the active device
+                outputs_for_loss = self.process_outputs_for_loss_function(outputs).to(self.device)
+
+                # Modify features used in comparing in loss function (if necessary) and load to the active device
+                compare_features = self.process_compare_features(batch_features).to(self.device)
 
                 # compute training reconstruction loss
-                train_loss = self.loss_function(outputs, batch_features)
+                train_loss = self.loss_function(outputs_for_loss, compare_features)
+
+                # Process loss if necessary (default implementation does nothing)
+                train_loss = self.process_loss(train_loss, compare_features, outputs)
 
                 # compute accumulated gradients
                 train_loss.backward()
@@ -134,6 +151,11 @@ class BaseEncoder(torch.nn.Module):
                 # add the mini-batch training loss to epoch loss
                 loss += train_loss.item()
 
+                # Print progress every 50 batches
+                if i % 50 == 0:
+                    self.log.debug(f"  progress: [{i * len(batch_features)}/{len(train_loader.dataset)} "
+                                   f"({(100 * i / len(train_loader)):.0f}%)]")
+
             # compute the epoch training loss
             loss = loss / len(train_loader)
 
@@ -143,7 +165,7 @@ class BaseEncoder(torch.nn.Module):
 
             # Every 5 epochs, save a test image
             if epoch % 5 == 0:
-                img = outputs.cpu().data
+                img = self.process_outputs_for_testing(outputs).cpu().data
                 img = img.view(img.size(0), 3, 32, 32)
                 save_image(img, os.path.join(TRAIN_TEMP_DATA_BASE_PATH,
                                              f'{self.name}_{dataset.name}_linear_ae_image{epoch}.png'))
@@ -163,10 +185,25 @@ class BaseEncoder(torch.nn.Module):
                                          f'{self.name}_{dataset.name}_test_input_{i}.png'))
             # load batch features to the active device
             batch = batch.to(self.device)
-            outputs = self(batch)
+            outputs = self.process_outputs_for_testing(self(batch))
             img = outputs.cpu().data
             img = img.view(outputs.size(0), 3, 32, 32)
             save_image(img, os.path.join(TEST_TEMP_DATA_BASE_PATH,
                                          f'{self.name}_{dataset.name}_test_reconstruction_{i}.png'))
             i += 1
             break
+
+    def process_loss(self, train_loss, features, outputs) -> _Loss:
+        return train_loss
+
+    def process_train_features(self, features):
+        return features
+
+    def process_compare_features(self, features):
+        return features
+
+    def process_outputs_for_loss_function(self, outputs):
+        return outputs
+
+    def process_outputs_for_testing(self, outputs):
+        return outputs

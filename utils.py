@@ -1,3 +1,4 @@
+import importlib
 import os
 from string import Template
 
@@ -6,6 +7,13 @@ from tabulate import tabulate
 import matplotlib.pyplot as plt
 
 from config import TRAIN_TEMP_DATA_BASE_PATH
+
+
+def load_dotted_path(path):
+    split_path = path.split(".")
+    modulename, classname = ".".join(split_path[:-1]), split_path[-1]
+    model = getattr(importlib.import_module(modulename), classname)
+    return model
 
 
 def training_header():
@@ -106,4 +114,5 @@ def save_train_loss_graph(train_loss, filename):
     plt.title('Train Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
+    plt.yscale('log')
     plt.savefig(os.path.join(TRAIN_TEMP_DATA_BASE_PATH, f'{filename}_loss.png'))

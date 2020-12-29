@@ -78,6 +78,12 @@ class BaseDataset(Dataset):
         self._trainset = self.__class__.get_new(name=f"{self.name} Training", data=train_data, source_path=self._source_path)
         self._testset = self.__class__.get_new(name=f"{self.name} Testing", data=test_data, source_path=self._source_path)
 
+    def has_train(self):
+        return self._trainset is not None
+
+    def has_test(self):
+        return self._testset is not None
+
     def get_train(self) -> 'BaseDataset':
         if not self._trainset or not self._testset:
             self._subdivide(self.TRAIN_AMOUNT)

@@ -4,7 +4,7 @@ import multiprocessing
 from models.base_corruption import BaseCorruption
 from models.base_dataset import BaseDataset
 from models.base_encoder import BaseEncoder
-from output_utils import save_train_loss_graph
+from utils import save_train_loss_graph
 
 
 class TestRun:
@@ -49,7 +49,7 @@ class TestRun:
 
             # Save train loss graph
             self.log.info("Saving loss graph...")
-            save_train_loss_graph(train_loss, self.dataset.name)
+            save_train_loss_graph(train_loss, f"{self.encoder.name}_{self.dataset.name}")
         else:
             self.log.info("Loading saved auto-encoder...")
             load_success = self.encoder.load_model(f"{self.encoder.name}_{self.dataset.name}")

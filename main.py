@@ -1,23 +1,15 @@
-import importlib
-
 import config
 import logging.config
 
 # Get logging as early as possible!
 logging.config.fileConfig("logging.conf")
 
+from utils import load_dotted_path
 
 from models.base_corruption import BaseCorruption
 from models.base_dataset import BaseDataset
 from models.base_encoder import BaseEncoder
 from models.test_run import TestRun
-
-
-def load_dotted_path(path):
-    split_path = path.split(".")
-    modulename, classname = ".".join(split_path[:-1]), split_path[-1]
-    model = getattr(importlib.import_module(modulename), classname)
-    return model
 
 
 def run_tests():
@@ -41,9 +33,11 @@ def run_tests():
         logger.debug(f"Using corruption model '{corruption_model.__name__}'")
 
         # Create TestRun instance
-        test_run = TestRun(dataset=dataset_model(**test['dataset_kwargs']),
-                           encoder=encoder_model(**test['encoder_kwargs']),
-                           corruption=corruption_model(**test['corruption_kwargs']))
+        dataset = dataset_model(**test['dataset_kwargs'])
+        encoder = encoder_model(**test['encoder_kwargs'])
+        encoder.after_init()
+        corruption = corruption_model(**test['corruption_kwargs'])
+        test_run = TestRun(dataset=dataset, encoder=encoder, corruption=corruption)
 
         # Run TestRun
         test_run.run(retrain=False)
