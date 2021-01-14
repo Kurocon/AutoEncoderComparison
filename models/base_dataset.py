@@ -17,6 +17,7 @@ class BaseDataset(Dataset):
     name = "BaseDataset"
     _source_path = None
     _data = None
+    _labels = None
     _trainset: 'BaseDataset' = None
     _testset: 'BaseDataset' = None
     transform = None
@@ -43,11 +44,12 @@ class BaseDataset(Dataset):
         return self.transform(self._data[item]) if self.transform else self._data[item]
 
     @classmethod
-    def get_new(cls, name: str, data: Optional[list] = None, source_path: Optional[str] = None,
+    def get_new(cls, name: str, data: Optional[list] = None, labels: Optional[dict] = None, source_path: Optional[str] = None,
                 train_set: Optional['BaseDataset'] = None, test_set: Optional['BaseDataset'] = None):
         dset = cls()
         dset.name = name
         dset._data = data
+        dset._labels = labels
         dset._source_path = source_path
         dset._trainset = train_set
         dset._testset = test_set
@@ -75,8 +77,8 @@ class BaseDataset(Dataset):
             raise ValueError("Cannot subdivide! Invalid amount given, "
                              "must be either a fraction between 0 and 1, or an integer.")
 
-        self._trainset = self.__class__.get_new(name=f"{self.name} Training", data=train_data, source_path=self._source_path)
-        self._testset = self.__class__.get_new(name=f"{self.name} Testing", data=test_data, source_path=self._source_path)
+        self._trainset = self.__class__.get_new(name=f"{self.name} Training", data=train_data, labels=self._labels, source_path=self._source_path)
+        self._testset = self.__class__.get_new(name=f"{self.name} Testing", data=test_data, labels=self._labels, source_path=self._source_path)
 
     def has_train(self):
         return self._trainset is not None
@@ -103,3 +105,8 @@ class BaseDataset(Dataset):
 
     def get_test_loader(self, batch_size: int = 128, num_workers: int = 4) -> torch.utils.data.DataLoader:
         return self.get_loader(self.get_test(), batch_size=batch_size, num_workers=num_workers)
+
+    def save_batch_to_sample(self, batch, filename):
+        # Save a batch of tensors to a sample file for comparison (no implementation for base dataset)
+        pass
+

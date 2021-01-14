@@ -166,9 +166,11 @@ class BaseEncoder(torch.nn.Module):
             # Every 5 epochs, save a test image
             if epoch % 5 == 0:
                 img = self.process_outputs_for_testing(outputs).cpu().data
-                img = img.view(img.size(0), 3, 32, 32)
-                save_image(img, os.path.join(TRAIN_TEMP_DATA_BASE_PATH,
-                                             f'{self.name}_{dataset.name}_linear_ae_image{epoch}.png'))
+                dataset.save_batch_to_sample(
+                    batch=img,
+                    filename=os.path.join(TRAIN_TEMP_DATA_BASE_PATH,
+                                          f'{self.name}_{dataset.name}_linear_ae_image{epoch}.png')
+                )
 
         return losses
 
@@ -180,16 +182,21 @@ class BaseEncoder(torch.nn.Module):
         self.log.debug(f"Start testing...")
         i = 0
         for batch in test_loader:
-            img = batch.view(batch.size(0), 3, 32, 32)
-            save_image(img, os.path.join(TEST_TEMP_DATA_BASE_PATH,
-                                         f'{self.name}_{dataset.name}_test_input_{i}.png'))
+            dataset.save_batch_to_sample(
+                batch=batch,
+                filename=os.path.join(TEST_TEMP_DATA_BASE_PATH,
+                                      f'{self.name}_{dataset.name}_test_input_{i}')
+            )
+
             # load batch features to the active device
             batch = batch.to(self.device)
             outputs = self.process_outputs_for_testing(self(batch))
             img = outputs.cpu().data
-            img = img.view(outputs.size(0), 3, 32, 32)
-            save_image(img, os.path.join(TEST_TEMP_DATA_BASE_PATH,
-                                         f'{self.name}_{dataset.name}_test_reconstruction_{i}.png'))
+            dataset.save_batch_to_sample(
+                batch=img,
+                filename=os.path.join(TEST_TEMP_DATA_BASE_PATH,
+                                      f'{self.name}_{dataset.name}_test_reconstruction_{i}')
+            )
             i += 1
             break
 

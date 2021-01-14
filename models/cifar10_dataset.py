@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy
 from torchvision import transforms
+from torchvision.utils import save_image
 
 from config import DATASET_STORAGE_BASE_PATH
 from models.base_dataset import BaseDataset
@@ -12,13 +13,9 @@ from models.base_dataset import BaseDataset
 class Cifar10Dataset(BaseDataset):
     name = "CIFAR-10"
 
-    # transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
-    #                                             torchvision.transforms.Normalize((0.5, ), (0.5, ))
-    #                                             ])
     transform = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.ToTensor(),
-        # transforms.Normalize((0.5,), (0.5,))
+        transforms.ToTensor()
     ])
 
     def unpickle(self, filename):
@@ -72,3 +69,7 @@ class Cifar10Dataset(BaseDataset):
         img = img.view(-1, 32 * 32 * 3)
 
         return img
+
+    def save_batch_to_sample(self, batch, filename):
+        img = batch.view(batch.size(0), 3, 32, 32)
+        save_image(img, f"{filename}.png")

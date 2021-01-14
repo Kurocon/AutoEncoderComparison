@@ -31,6 +31,7 @@ class GaussianCorruption(BaseCorruption):
         return dataset.__class__.get_new(
             name=f"{dataset.name} Corrupted",
             data=data,
+            labels=dataset._labels,
             source_path=dataset._source_path,
             train_set=train_set,
             test_set=test_set)
