@@ -59,7 +59,7 @@ class TestRun:
 
         # Test encoder
         self.log.info("Testing auto-encoder...")
-        self.encoder.test_encoder(self.dataset, num_workers=multiprocessing.cpu_count() - 1)
+        self.encoder.test_encoder(self.dataset, corruption=self.corruption, num_workers=multiprocessing.cpu_count() - 1)
 
         self.log.info("Done!")
 

@@ -3,6 +3,7 @@ import os
 from typing import Optional
 
 import numpy
+from pytorch_msssim import ssim
 from torchvision import transforms
 from torchvision.utils import save_image
 
@@ -70,6 +71,28 @@ class Cifar10Dataset(BaseDataset):
 
         return img
 
+    def get_as_image_array(self, item):
+        # Get image data
+        img = self._data[item]
+
+        img = img.reshape((3, 1024))
+
+        # Run transforms
+        if self.transform is not None:
+            img = self.transform(img)
+
+        # Reshape the 32x32x3 image to a 1x3072 array for the Linear layer
+        img = img.view(-1, 3, 32, 32)
+
+        return img
+
     def save_batch_to_sample(self, batch, filename):
         img = batch.view(batch.size(0), 3, 32, 32)
         save_image(img, f"{filename}.png")
+
+    def calculate_score(self, originals, reconstruction, device):
+        # Calculate SSIM
+        originals = originals.view(originals.size(0), 3, 32, 32).to(device)
+        reconstruction = reconstruction.view(reconstruction.size(0), 3, 32, 32).to(device)
+        batch_average_score = ssim(originals, reconstruction, data_range=1, size_average=True)
+        return batch_average_score

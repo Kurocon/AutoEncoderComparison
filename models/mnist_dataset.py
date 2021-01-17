@@ -2,6 +2,7 @@ import os
 
 from typing import Optional
 
+from pytorch_msssim import ssim
 from torchvision import transforms
 from torchvision.datasets import MNIST
 from torchvision.utils import save_image
@@ -56,3 +57,10 @@ class MNISTDataset(BaseDataset):
     def save_batch_to_sample(self, batch, filename):
         img = batch.view(batch.size(0), 1, 28, 28)
         save_image(img, f"{filename}.png")
+
+    def calculate_score(self, originals, reconstruction, device):
+        # Calculate SSIM
+        originals = originals.view(originals.size(0), 1, 28, 28).to(device)
+        reconstruction = reconstruction.view(reconstruction.size(0), 1, 28, 28).to(device)
+        batch_average_score = ssim(originals, reconstruction, data_range=1, size_average=True)
+        return batch_average_score

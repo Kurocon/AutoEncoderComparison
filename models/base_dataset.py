@@ -110,3 +110,7 @@ class BaseDataset(Dataset):
         # Save a batch of tensors to a sample file for comparison (no implementation for base dataset)
         pass
 
+    def calculate_score(self, originals, reconstruction, device):
+        # Calculate the score given an uncorrupted and a corrupted batch. (no implementation for base dataset)
+        pass
+

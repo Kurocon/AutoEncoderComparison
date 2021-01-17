@@ -6,10 +6,12 @@ import torch
 
 from typing import Optional
 
+from pytorch_msssim import ssim
 from torch.nn.modules.loss import _Loss
 from torchvision.utils import save_image
 
 from config import TRAIN_TEMP_DATA_BASE_PATH, TEST_TEMP_DATA_BASE_PATH, MODEL_STORAGE_BASE_PATH
+from models.base_corruption import BaseCorruption
 from models.base_dataset import BaseDataset
 
 
@@ -175,30 +177,45 @@ class BaseEncoder(torch.nn.Module):
         return losses
 
 
-    def test_encoder(self, dataset: BaseDataset, batch_size: int = 128, num_workers: int = 4):
+    def test_encoder(self, dataset: BaseDataset, corruption: BaseCorruption, batch_size: int = 128, num_workers: int = 4):
         self.log.debug("Getting testing dataset DataLoader.")
         test_loader = dataset.get_test_loader(batch_size=batch_size, num_workers=num_workers)
 
         self.log.debug(f"Start testing...")
+        avg_scores = []
         i = 0
         for batch in test_loader:
             dataset.save_batch_to_sample(
                 batch=batch,
                 filename=os.path.join(TEST_TEMP_DATA_BASE_PATH,
-                                      f'{self.name}_{dataset.name}_test_input_{i}')
+                                      f'{self.name}_{dataset.name}_test_input_{i}_uncorrupted')
+            )
+            corrupted_batch = torch.tensor([corruption.corrupt_image(i) for i in batch], dtype=torch.float32)
+            dataset.save_batch_to_sample(
+                batch=corrupted_batch,
+                filename=os.path.join(TEST_TEMP_DATA_BASE_PATH,
+                                      f'{self.name}_{dataset.name}_test_input_{i}_corrupted')
             )
 
             # load batch features to the active device
-            batch = batch.to(self.device)
-            outputs = self.process_outputs_for_testing(self(batch))
+            corrupted_batch = corrupted_batch.to(self.device)
+            outputs = self.process_outputs_for_testing(self(corrupted_batch))
             img = outputs.cpu().data
             dataset.save_batch_to_sample(
                 batch=img,
                 filename=os.path.join(TEST_TEMP_DATA_BASE_PATH,
                                       f'{self.name}_{dataset.name}_test_reconstruction_{i}')
             )
+
+            batch_score = dataset.calculate_score(batch, img, self.device)
+            avg_scores.append(batch_score)
+
             i += 1
             break
+
+        avg_score = sum(avg_scores) / len(avg_scores)
+        # self.log.warning(f"Testing results - Average score: {avg_score}")
+        print(f"Testing results - Average score: {avg_score}")
 
     def process_loss(self, train_loss, features, outputs) -> _Loss:
         return train_loss

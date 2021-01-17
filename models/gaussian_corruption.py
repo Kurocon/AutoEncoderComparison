@@ -1,3 +1,4 @@
+import torch
 from torch import Tensor
 
 from models.base_corruption import BaseCorruption
@@ -6,11 +7,13 @@ import numpy
 
 
 def add_noise(image):
+    if isinstance(image, Tensor):
+        image = image.numpy()
     image = image.astype(numpy.float32)
     mean, variance = 0, 0.1
     sigma = variance ** 0.5
     noise = numpy.random.normal(mean, sigma, image.shape).reshape(image.shape)
-    return image + noise
+    return numpy.clip(image + noise, 0, 1)
 
 
 class GaussianCorruption(BaseCorruption):
@@ -25,7 +28,8 @@ class GaussianCorruption(BaseCorruption):
 
     @classmethod
     def corrupt_dataset(cls, dataset: BaseDataset) -> BaseDataset:
-        data = list(map(add_noise, dataset))
+        data = [cls.corrupt_image(x) for x in dataset]
+        # data = list(map(add_noise, dataset._data))
         train_set = cls.corrupt_dataset(dataset.get_train()) if dataset.has_train() else None
         test_set = cls.corrupt_dataset(dataset.get_test()) if dataset.has_test() else None
         return dataset.__class__.get_new(
