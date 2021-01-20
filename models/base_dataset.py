@@ -62,6 +62,9 @@ class BaseDataset(Dataset):
             self._source_path = path
         raise NotImplementedError()
 
+    def get_input_shape(self):
+        return None
+
     def _subdivide(self, amount: Union[int, float]):
         if self._data is None:
             raise ValueError("Cannot subdivide! Data not loaded, call `load()` first to load data")

@@ -117,7 +117,7 @@ class BaseEncoder(torch.nn.Module):
         outputs = None
         for epoch in range(epochs):
             self.log.debug(f"Start training epoch {epoch + 1}...")
-            loss = 0
+            loss = []
             for i, batch_features in enumerate(train_loader):
                 # # load batch features to the active device
                 # batch_features = batch_features.to(self.device)
@@ -151,15 +151,15 @@ class BaseEncoder(torch.nn.Module):
                 self.optimizer.step()
 
                 # add the mini-batch training loss to epoch loss
-                loss += train_loss.item()
+                loss.append(train_loss.item())
 
                 # Print progress every 50 batches
-                if i % 50 == 0:
+                if i % 100 == 0:
                     self.log.debug(f"  progress: [{i * len(batch_features)}/{len(train_loader.dataset)} "
                                    f"({(100 * i / len(train_loader)):.0f}%)]")
 
             # compute the epoch training loss
-            loss = loss / len(train_loader)
+            loss = sum(loss) / len(loss)
 
             # display the epoch training loss
             self.log.info("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))

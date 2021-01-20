@@ -50,6 +50,9 @@ class Cifar10Dataset(BaseDataset):
 
         self.log.info(f"Loaded {self}, divided into {self._trainset} and {self._testset}")
 
+    def get_input_shape(self):
+        return 3072  # 32x32x3 (32x32px, 3 colors)
+
     def __getitem__(self, item):
         # Get image data
         img = self._data[item]
@@ -87,7 +90,7 @@ class Cifar10Dataset(BaseDataset):
         return img
 
     def save_batch_to_sample(self, batch, filename):
-        img = batch.view(batch.size(0), 3, 32, 32)
+        img = batch.view(batch.size(0), 3, 32, 32)[:48]
         save_image(img, f"{filename}.png")
 
     def calculate_score(self, originals, reconstruction, device):

@@ -41,6 +41,9 @@ class MNISTDataset(BaseDataset):
 
         self.log.info(f"Loaded {self}, divided into {self._trainset} and {self._testset}")
 
+    def get_input_shape(self):
+        return 784  # 28x28x1 (28x28px, 1 color)
+
     def __getitem__(self, item):
         # Get image data
         img = self._data[item]
@@ -55,7 +58,7 @@ class MNISTDataset(BaseDataset):
         return img
 
     def save_batch_to_sample(self, batch, filename):
-        img = batch.view(batch.size(0), 1, 28, 28)
+        img = batch.view(batch.size(0), 1, 28, 28)[:48]
         save_image(img, f"{filename}.png")
 
     def calculate_score(self, originals, reconstruction, device):

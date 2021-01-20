@@ -116,3 +116,8 @@ def save_train_loss_graph(train_loss, filename):
     plt.ylabel('Loss')
     plt.yscale('log')
     plt.savefig(os.path.join(TRAIN_TEMP_DATA_BASE_PATH, f'{filename}_loss.png'))
+
+
+def save_train_loss_values(train_loss, filename):
+    with open(os.path.join(TRAIN_TEMP_DATA_BASE_PATH, f'{filename}_loss.csv'), 'w') as f:
+        f.write(",".join(map(str, train_loss)))

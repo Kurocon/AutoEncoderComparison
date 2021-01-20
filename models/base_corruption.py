@@ -1,3 +1,5 @@
+import torch
+
 from models.base_dataset import BaseDataset
 
 
@@ -30,8 +32,8 @@ class NoCorruption(BaseCorruption):
     name = "No corruption"
 
     @classmethod
-    def corrupt_image(cls, image):
-        return image
+    def corrupt_image(cls, image: torch.Tensor):
+        return image.numpy()
 
     @classmethod
     def corrupt_dataset(cls, dataset: BaseDataset) -> BaseDataset:

@@ -34,6 +34,8 @@ def run_tests():
 
         # Create TestRun instance
         dataset = dataset_model(**test['dataset_kwargs'])
+        if test['encoder_kwargs'].get('input_shape', None) is None:
+            test['encoder_kwargs']['input_shape'] = dataset.get_input_shape()
         encoder = encoder_model(**test['encoder_kwargs'])
         encoder.after_init()
         corruption = corruption_model(**test['corruption_kwargs'])
