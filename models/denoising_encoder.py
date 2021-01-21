@@ -15,12 +15,12 @@ class DenoisingAutoEncoder(BaseEncoder):
     # Based on https://github.com/pranjaldatta/Denoising-Autoencoder-in-Pytorch/blob/master/DenoisingAutoencoder.ipynb
     name = "DenoisingAutoEncoder"
 
-    def __init__(self, name: Optional[str] = None, input_shape: int = 0,
+    def __init__(self, name: Optional[str] = None, input_shape: int = 0, loss_function=None,
                  input_corruption_model: BaseCorruption = NoCorruption):
         self.log = logging.getLogger(self.__class__.__name__)
 
         # Call superclass to initialize parameters.
-        super(DenoisingAutoEncoder, self).__init__(name, input_shape)
+        super(DenoisingAutoEncoder, self).__init__(name, input_shape, loss_function)
 
         # Network, optimizer and loss function are the same as defined in the base encoder.
 

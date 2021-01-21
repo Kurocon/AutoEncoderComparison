@@ -36,13 +36,21 @@ def run_tests():
         dataset = dataset_model(**test['dataset_kwargs'])
         if test['encoder_kwargs'].get('input_shape', None) is None:
             test['encoder_kwargs']['input_shape'] = dataset.get_input_shape()
+        if test['encoder_kwargs'].get('loss_function', None) is None:
+            test['encoder_kwargs']['loss_function'] = dataset.get_loss_function()
         encoder = encoder_model(**test['encoder_kwargs'])
         encoder.after_init()
         corruption = corruption_model(**test['corruption_kwargs'])
         test_run = TestRun(dataset=dataset, encoder=encoder, corruption=corruption)
 
         # Run TestRun
-        test_run.run(retrain=False)
+        test_run.run(retrain=True)
+
+        # Cleanup to avoid out-of-memory situations when running lots of tests
+        del test_run
+        del corruption
+        del encoder
+        del dataset
 
 
 if __name__ == '__main__':

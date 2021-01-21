@@ -7,9 +7,51 @@ from typing import Optional
 
 import numpy
 import torch
+from torch.nn.modules.loss import _Loss
 
 from config import DATASET_STORAGE_BASE_PATH
 from models.base_dataset import BaseDataset
+
+
+class USWeatherLoss(_Loss):
+    __constants__ = ['reduction']
+
+    def __init__(self, dataset=None, size_average=None, reduce=None, reduction: str = 'mean') -> None:
+        self.dataset = dataset
+        super(USWeatherLoss, self).__init__(size_average, reduce, reduction)
+
+        self.ce_loss = torch.nn.CrossEntropyLoss()
+        self.l1_loss = torch.nn.L1Loss()
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        losses = []
+        start = 0
+        length = len(self.dataset._labels['Type'])
+        # Type is 1-hot encoded, so use cross entropy loss
+        losses.append(self.ce_loss(input[start:start+length], torch.argmax(target[start:start+length].long(), dim=1)))
+        start += length
+        length = len(self.dataset._labels['Severity'])
+        # Severity is 1-hot encoded, so use cross entropy loss
+        losses.append(self.ce_loss(input[start:start+length], torch.argmax(target[start:start+length].long(), dim=1)))
+        start += length
+        # Start time is a number, so use L1 loss
+        losses.append(self.l1_loss(input[start], target[start]))
+        # End time is a number, so use L1 loss
+        losses.append(self.l1_loss(input[start + 1], target[start + 1]))
+        start += 2
+        length = len(self.dataset._labels['TimeZone'])
+        # TimeZone is 1-hot encoded, so use cross entropy loss
+        losses.append(self.ce_loss(input[start:start+length], torch.argmax(target[start:start+length].long(), dim=1)))
+        start += length
+        # Location latitude is a number, so use L1 loss
+        losses.append(self.l1_loss(input[start], target[start]))
+        # Location longitude is a number, so use L1 loss
+        losses.append(self.l1_loss(input[start + 1], target[start + 1]))
+        start += 2
+        length = len(self.dataset._labels['State'])
+        # State is 1-hot encoded, so use cross entropy loss
+        losses.append(self.ce_loss(input[start:start+length], torch.argmax(target[start:start+length].long(), dim=1)))
+        return sum(losses)
 
 
 class USWeatherEventsDataset(BaseDataset):
@@ -107,7 +149,9 @@ class USWeatherEventsDataset(BaseDataset):
                 pickle.dump(dict(self._labels), f)
             self.log.info("Cached version created.")
 
-        train_data, test_data = self._data[:2500000], self._data[2500000:]
+        # train_data, test_data = self._data[:2500000], self._data[2500000:]
+        # Speed up training a bit
+        train_data, test_data = self._data[:50000], self._data[100000:150000]
 
         self._trainset = self.__class__.get_new(name=f"{self.name} Training", data=train_data, labels=self._labels,
                                                 source_path=self._source_path)
@@ -140,42 +184,48 @@ class USWeatherEventsDataset(BaseDataset):
 
         return data
 
+    def output_to_result_row(self, output):
+        # Get 1-hot encoded values as list per value, and other values as value
+        if not isinstance(output, list):
+            output = output.tolist()
+
+        start = 0
+        length = len(self._labels['Type'])
+        event_types = output[start:start+length]
+        start += length
+        length = len(self._labels['Severity'])
+        severities = output[start:start+length]
+        start += length
+        start_time = output[start]
+        end_time = output[start+1]
+        start += 2
+        length = len(self._labels['TimeZone'])
+        timezones = output[start:start+length]
+        start += length
+        location_lat = output[start]
+        location_lng = output[start+1]
+        start += 2
+        length = len(self._labels['State'])
+        states = output[start:start+length]
+
+        # Convert 1-hot encodings to normal labels, assume highest value as the true value.
+        event_type = self._labels['Type'][event_types.index(max(event_types))]
+        severity = self._labels['Severity'][severities.index(max(severities))]
+        timezone = self._labels['TimeZone'][timezones.index(max(timezones))]
+        state = self._labels['State'][states.index(max(states))]
+
+        # Convert timestamp float into string time
+        start_time = datetime.fromtimestamp(start_time).strftime("%Y-%m-%d %H:%M:%S")
+        end_time = datetime.fromtimestamp(end_time).strftime("%Y-%m-%d %H:%M:%S")
+
+        return [event_type, severity, start_time, end_time, timezone, location_lat, location_lng, state]
+
     def save_batch_to_sample(self, batch, filename):
         res = ["Type,Severity,StartTime(UTC),EndTime(UTC),TimeZone,LocationLat,LocationLng,State\n"]
 
         for row in batch:
-            # Get 1-hot encoded values as list per value, and other values as value
             row = row.tolist()
-            start = 0
-            length = len(self._labels['Type'])
-            event_types = row[start:start+length]
-            start += length
-            length = len(self._labels['Severity'])
-            severities = row[start:start+length]
-            start += length
-            start_time = row[start]
-            end_time = row[start+1]
-            start += 2
-            length = len(self._labels['TimeZone'])
-            timezones = row[start:start+length]
-            start += length
-            location_lat = row[start]
-            location_lng = row[start+1]
-            start += 2
-            length = len(self._labels['State'])
-            states = row[start:start+length]
-
-            # Convert 1-hot encodings to normal labels, assume highest value as the true value.
-            event_type = self._labels['Type'][event_types.index(max(event_types))]
-            severity = self._labels['Severity'][severities.index(max(severities))]
-            timezone = self._labels['TimeZone'][timezones.index(max(timezones))]
-            state = self._labels['State'][states.index(max(states))]
-
-            # Convert timestamp float into string time
-            start_time = datetime.fromtimestamp(start_time).strftime("%Y-%m-%d %H:%M:%S")
-            end_time = datetime.fromtimestamp(end_time).strftime("%Y-%m-%d %H:%M:%S")
-
-            res.append(f"{event_type},{severity},{start_time},{end_time},{timezone},{location_lat},{location_lng},{state}\n")
+            res.append(",".join(map(lambda x: f'{x}', self.output_to_result_row(row)))+"\n")
 
         with open(f"{filename}.csv", "w") as f:
             f.writelines(res)
@@ -186,7 +236,10 @@ class USWeatherEventsDataset(BaseDataset):
 
         total_score = 0
         for i in range(len(originals)):
-            original, recon = originals[i], reconstruction[i]
+            original, recon =  self.output_to_result_row(originals[i]),  self.output_to_result_row(reconstruction[i])
             total_score += sum(int(original[j] == recon[j]) for j in range(len(original))) / len(original)
 
         return total_score / len(originals)
+
+    def get_loss_function(self):
+        return USWeatherLoss(dataset=self)

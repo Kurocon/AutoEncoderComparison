@@ -13,11 +13,11 @@ class ContractiveAutoEncoder(BaseEncoder):
     # Based on https://github.com/avijit9/Contractive_Autoencoder_in_Pytorch/blob/master/CAE_pytorch.py
     name = "ContractiveAutoEncoder"
 
-    def __init__(self, name: Optional[str] = None, input_shape: int = 0, regularizer_weight: float = 1e-4):
+    def __init__(self, name: Optional[str] = None, input_shape: int = 0, loss_function=None, regularizer_weight: float = 1e-4):
         self.log = logging.getLogger(self.__class__.__name__)
 
         # Call superclass to initialize parameters.
-        super(ContractiveAutoEncoder, self).__init__(name, input_shape)
+        super(ContractiveAutoEncoder, self).__init__(name, input_shape, loss_function)
 
         self.regularizer_weight = regularizer_weight
 

@@ -65,6 +65,9 @@ class BaseDataset(Dataset):
     def get_input_shape(self):
         return None
 
+    def get_loss_function(self):
+        return torch.nn.MSELoss()
+
     def _subdivide(self, amount: Union[int, float]):
         if self._data is None:
             raise ValueError("Cannot subdivide! Data not loaded, call `load()` first to load data")

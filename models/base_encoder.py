@@ -19,7 +19,7 @@ class BaseEncoder(torch.nn.Module):
     # Based on https://medium.com/pytorch/implementing-an-autoencoder-in-pytorch-19baa22647d1
     name = "BaseEncoder"
 
-    def __init__(self, name: Optional[str] = None, input_shape: int = 0):
+    def __init__(self, name: Optional[str] = None, input_shape: int = 0, loss_function=None):
         super(BaseEncoder, self).__init__()
         self.log = logging.getLogger(self.__class__.__name__)
 
@@ -51,7 +51,10 @@ class BaseEncoder(torch.nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
 
         # Mean Squared Error loss function
-        self.loss_function = torch.nn.MSELoss()
+        if loss_function is not None:
+            self.loss_function = loss_function
+        else:
+            self.loss_function = torch.nn.MSELoss()
 
     def after_init(self):
         self.log.info(f"Auto-encoder {self.__class__.__name__} initialized with "
@@ -163,6 +166,9 @@ class BaseEncoder(torch.nn.Module):
 
             # display the epoch training loss
             self.log.info("epoch : {}/{}, loss = {:.6f}".format(epoch + 1, epochs, loss))
+            self.log.debug(f"Expected: {compare_features.cpu().detach().numpy()[0].tolist()}")
+            self.log.debug(f"Outputs:  {outputs_for_loss.cpu().detach().numpy()[0].tolist()}")
+            self.log.debug(f"Loss:     {train_loss}")
             losses.append(loss)
 
             # Every 5 epochs, save a test image

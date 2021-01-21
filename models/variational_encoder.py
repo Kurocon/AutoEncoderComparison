@@ -12,11 +12,11 @@ class VariationalAutoEncoder(BaseEncoder):
     # and https://github.com/pytorch/examples/blob/master/vae/main.py
     name = "VariationalAutoEncoder"
 
-    def __init__(self, name: Optional[str] = None, input_shape: int = 0):
+    def __init__(self, name: Optional[str] = None, input_shape: int = 0, loss_function=None):
         self.log = logging.getLogger(self.__class__.__name__)
 
         # Call superclass to initialize parameters.
-        super(VariationalAutoEncoder, self).__init__(name, input_shape)
+        super(VariationalAutoEncoder, self).__init__(name, input_shape, loss_function)
 
         # VAE needs intermediate output of the encoder stage, so split up the network into encoder/decoder
         # with no ReLU layer at the end of the encoder so we have access to the mu and variance.

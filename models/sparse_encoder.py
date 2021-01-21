@@ -14,11 +14,11 @@ class SparseL1AutoEncoder(BaseEncoder):
     # Based on https://debuggercafe.com/sparse-autoencoders-using-l1-regularization-with-pytorch/
     name = "SparseL1AutoEncoder"
 
-    def __init__(self, name: Optional[str] = None, input_shape: int = 0, regularization_parameter: float = 0.001):
+    def __init__(self, name: Optional[str] = None, input_shape: int = 0, loss_function=None, regularization_parameter: float = 0.001):
         self.log = logging.getLogger(self.__class__.__name__)
 
         # Call superclass to initialize parameters.
-        super(SparseL1AutoEncoder, self).__init__(name, input_shape)
+        super(SparseL1AutoEncoder, self).__init__(name, input_shape, loss_function)
 
         # Override parameters to custom values for this encoder type
 
