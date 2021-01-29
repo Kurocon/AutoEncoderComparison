@@ -73,7 +73,8 @@ class ContractiveAutoEncoder(BaseEncoder):
         weights = self.state_dict()['encoder.2.weight']
 
         # Hadamard product
-        hidden_output = hidden_output.reshape(hidden_output.shape[0], hidden_output.shape[2])
+        if len(hidden_output.shape) > 2:
+            hidden_output = hidden_output.reshape(hidden_output.shape[0], hidden_output.shape[2])
         dh = hidden_output * (1 - hidden_output)
 
         # Sum through input dimension to improve efficiency (suggested in reference)

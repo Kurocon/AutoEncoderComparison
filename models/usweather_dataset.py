@@ -1,7 +1,6 @@
 import csv
 import os
 from collections import defaultdict
-from datetime import datetime
 
 from typing import Optional
 
@@ -26,31 +25,22 @@ class USWeatherLoss(_Loss):
     def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         losses = []
         start = 0
+
         length = len(self.dataset._labels['Type'])
         # Type is 1-hot encoded, so use cross entropy loss
-        losses.append(self.ce_loss(input[start:start+length], torch.argmax(target[start:start+length].long(), dim=1)))
+        losses.append(self.ce_loss(input[:, start:start+length], torch.argmax(target[:, start:start+length].long(), dim=1)))
         start += length
         length = len(self.dataset._labels['Severity'])
         # Severity is 1-hot encoded, so use cross entropy loss
-        losses.append(self.ce_loss(input[start:start+length], torch.argmax(target[start:start+length].long(), dim=1)))
+        losses.append(self.ce_loss(input[:, start:start+length], torch.argmax(target[:, start:start+length].long(), dim=1)))
         start += length
-        # Start time is a number, so use L1 loss
-        losses.append(self.l1_loss(input[start], target[start]))
-        # End time is a number, so use L1 loss
-        losses.append(self.l1_loss(input[start + 1], target[start + 1]))
-        start += 2
         length = len(self.dataset._labels['TimeZone'])
         # TimeZone is 1-hot encoded, so use cross entropy loss
-        losses.append(self.ce_loss(input[start:start+length], torch.argmax(target[start:start+length].long(), dim=1)))
+        losses.append(self.ce_loss(input[:, start:start+length], torch.argmax(target[:, start:start+length].long(), dim=1)))
         start += length
-        # Location latitude is a number, so use L1 loss
-        losses.append(self.l1_loss(input[start], target[start]))
-        # Location longitude is a number, so use L1 loss
-        losses.append(self.l1_loss(input[start + 1], target[start + 1]))
-        start += 2
         length = len(self.dataset._labels['State'])
         # State is 1-hot encoded, so use cross entropy loss
-        losses.append(self.ce_loss(input[start:start+length], torch.argmax(target[start:start+length].long(), dim=1)))
+        losses.append(self.ce_loss(input[:, start:start+length], torch.argmax(target[:, start:start+length].long(), dim=1)))
         return sum(losses)
 
 
@@ -110,22 +100,8 @@ class USWeatherEventsDataset(BaseDataset):
                         # 1-hot encoded event severity columns
                         [int(row['Severity'] == self._labels['Severity'][i]) for i in range(len(self._labels['Severity']))] +
 
-                        [
-                            # Start time as unix timestamp
-                            datetime.strptime(row['StartTime(UTC)'], "%Y-%m-%d %H:%M:%S").timestamp(),
-                            # End time as unix timestamp
-                            datetime.strptime(row['EndTime(UTC)'], "%Y-%m-%d %H:%M:%S").timestamp()
-                        ] +
-
                         # 1-hot encoded event timezone columns
                         [int(row['TimeZone'] == self._labels['TimeZone'][i]) for i in range(len(self._labels['TimeZone']))] +
-
-                        [
-                            # Location Latitude as float
-                            float(row['LocationLat']),
-                            # Location Longitude as float
-                            float(row['LocationLng']),
-                        ] +
 
                         # 1-hot encoded event state columns
                         [int(row['State'] == self._labels['State'][i]) for i in range(len(self._labels['State']))]
@@ -151,7 +127,7 @@ class USWeatherEventsDataset(BaseDataset):
 
         # train_data, test_data = self._data[:2500000], self._data[2500000:]
         # Speed up training a bit
-        train_data, test_data = self._data[:50000], self._data[100000:150000]
+        train_data, test_data = self._data[:250000], self._data[250000:500000]
 
         self._trainset = self.__class__.get_new(name=f"{self.name} Training", data=train_data, labels=self._labels,
                                                 source_path=self._source_path)
@@ -167,13 +143,11 @@ class USWeatherEventsDataset(BaseDataset):
             size = 0
             size += len(labels['Type'])
             size += len(labels['Severity'])
-            size += 2
             size += len(labels['TimeZone'])
-            size += 2
             size += len(labels['State'])
             return size
         else:
-            return 69
+            return 65
 
     def __getitem__(self, item):
         data = self._data[item]
@@ -196,15 +170,9 @@ class USWeatherEventsDataset(BaseDataset):
         length = len(self._labels['Severity'])
         severities = output[start:start+length]
         start += length
-        start_time = output[start]
-        end_time = output[start+1]
-        start += 2
         length = len(self._labels['TimeZone'])
         timezones = output[start:start+length]
         start += length
-        location_lat = output[start]
-        location_lng = output[start+1]
-        start += 2
         length = len(self._labels['State'])
         states = output[start:start+length]
 
@@ -214,14 +182,10 @@ class USWeatherEventsDataset(BaseDataset):
         timezone = self._labels['TimeZone'][timezones.index(max(timezones))]
         state = self._labels['State'][states.index(max(states))]
 
-        # Convert timestamp float into string time
-        start_time = datetime.fromtimestamp(start_time).strftime("%Y-%m-%d %H:%M:%S")
-        end_time = datetime.fromtimestamp(end_time).strftime("%Y-%m-%d %H:%M:%S")
-
-        return [event_type, severity, start_time, end_time, timezone, location_lat, location_lng, state]
+        return [event_type, severity, timezone, state]
 
     def save_batch_to_sample(self, batch, filename):
-        res = ["Type,Severity,StartTime(UTC),EndTime(UTC),TimeZone,LocationLat,LocationLng,State\n"]
+        res = ["Type,Severity,TimeZone,State\n"]
 
         for row in batch:
             row = row.tolist()

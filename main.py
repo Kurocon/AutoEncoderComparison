@@ -44,7 +44,7 @@ def run_tests():
         test_run = TestRun(dataset=dataset, encoder=encoder, corruption=corruption)
 
         # Run TestRun
-        test_run.run(retrain=True)
+        test_run.run(retrain=False)
 
         # Cleanup to avoid out-of-memory situations when running lots of tests
         del test_run
